@@ -2,7 +2,7 @@
 //                     الإعدادات الرئيسية
 // ==========================================================
 // !!! تنبيه هام: هذا هو رابط النشر الجديد الذي زودتني به
-const API_URL = 'https://script.google.com/macros/s/AKfycbx8xsJMMZe5bEDo7-bq9AzuzLW1dgJc2EsdJhdmWA80iYVwsvgSxYsoLplKBgx_w0hf/exec'; 
+const API_URL = 'https://script.google.com/macros/s/AKfycbzE2kESTg6sl2GepgPNphWmCAg0ROe0nQOuP5bl-QVl-opZIE8qjUVKLbPLyB1iGrPt/exec'; 
 
 // ==========================================================
 //                   دوال الأمان (جديد)
@@ -124,7 +124,7 @@ async function callApi(action, payload = {}) {
         }
         if (!result.success) {
           console.error("API Error Response:", result.message, result.stack);
-          if (!['getWeeklySchedule', 'getExistingEvaluations', 'getUniqueClassesAndSubjects', 'getUserDetails', 'getSmartTimetableVersions', 'trackItemView', 'getNotifications', 'markNotificationsRead', 'registerPushToken', 'unregisterPushToken', 'logout'].includes(action)) { 
+          if (!['getWeeklySchedule', 'getExistingEvaluations', 'getUniqueClassesAndSubjects', 'getUserDetails', 'getSmartTimetableVersions', 'trackItemView', 'getNotifications', 'markNotificationsRead', 'registerPushToken', 'unregisterPushToken', 'logout', 'getMyFeatures'].includes(action)) { 
             alert(`خطأ من الخادم: ${result.message || 'حدث خطأ غير متوقع.'}`);
           }
         }
