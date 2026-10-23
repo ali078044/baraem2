@@ -1,15 +1,16 @@
 // عامل الخدمة: يفتح التطبيق بسرعة، ويستقبل إشعارات الهاتف حتى والمنصة مغلقة.
 // طلبات الخادم (Google Apps Script) لا تُحفظ أبداً.
-const C = 'baraem-v6';
+const C = 'baraem-v7';
 const FILES = ['./', 'index.html', 'StudentInterface.html', 'TeacherInterface.html', 'AdminInterface.html',
-  'style.css?v=6', 'ui.js?v=4', 'enhance.js?v=2', 'push.js?v=3', 'account.js?v=1', 'modules.js?v=4', 'omr.js?v=2', 'vendor/qrcode.js', 'vendor/jsQR.js', 'script.js?v=6', 'manifest.json', 'icon-192.png'];
+  'style.css?v=6', 'ui.js?v=4', 'enhance.js?v=2', 'push.js?v=3', 'account.js?v=2', 'modules.js?v=4', 'omr.js?v=2', 'vendor/qrcode.js', 'vendor/jsQR.js', 'script.js?v=7', 'manifest.json', 'icon-192.png'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(FILES)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== C).map(x => caches.delete(x))))); self.clients.claim(); });
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   if (e.request.method !== 'GET' || u.origin !== location.origin || u.pathname.endsWith('push-config.js')) return;
-  e.respondWith(fetch(e.request).then(r => { const cp = r.clone(); caches.open(C).then(c => c.put(e.request, cp)); return r; }).catch(() => caches.match(e.request)));
+  // no-cache: يتأكد من الخادم كل مرة (رد سريع 304 إن لم يتغير)، فتصل التحديثات للهاتف فوراً
+  e.respondWith(fetch(e.request, { cache: 'no-cache' }).then(r => { const cp = r.clone(); caches.open(C).then(c => c.put(e.request, cp)); return r; }).catch(() => caches.match(e.request)));
 });
 
 // ---------------- إشعارات الهاتف ----------------

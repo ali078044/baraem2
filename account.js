@@ -171,7 +171,7 @@
 
   const start = () => {
     if (isLogin) mountLogin();
-    else setTimeout(() => { paintFoot(); checkAccount(); }, 1200);
+    else setTimeout(() => { paintFoot(); checkAccount(); }, 2500);
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
