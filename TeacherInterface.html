@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>واجهة المدرس - مدرسة البراعم كربلاء الأهلية</title>
+    <meta name="theme-color" content="#14201f">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Readex+Pro:wght@500;600&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --primary-color: #28a745; --light-green: #eafaf1; --border-color: #dee2e6; }
+        
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body { font-family: 'Tajawal', sans-serif; background-color: #f4f7f9; margin: 0; }
+        .header { background-color: var(--primary-color); color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .header h1 { margin: 0; font-size: 1.5em; }
+        .user-info { display: flex; align-items: center; gap: 15px; }
+        #logoutBtn { background: transparent; border: 1px solid white; color: white; padding: 8px 15px; border-radius: 4px; cursor: pointer; transition: all 0.3s; }
+        #logoutBtn:hover { background: white; color: var(--primary-color); }
+
+        .tabs { display: flex; background: white; padding: 0 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow-x: auto; white-space: nowrap; }
+        .tab-button { background: none; border: none; padding: 15px 20px; font-size: 1em; cursor: pointer; color: #555; border-bottom: 3px solid transparent; transition: all 0.3s; font-family: 'Tajawal', sans-serif; font-weight: bold; }
+        .tab-button:hover { color: var(--primary-color); }
+        .tab-button.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+
+        .container { padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .tab-content { display: none; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .card { background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        
+        .controls { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; background: var(--light-green); padding: 15px; border-radius: 8px; }
+        select, input[type="date"], input[type="text"], textarea { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: 'Tajawal', sans-serif; flex: 1; min-width: 200px; }
+        .button { background-color: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-family: 'Tajawal', sans-serif; transition: background 0.3s; }
+        .button:hover { background-color: #218838; }
+        .btn-publish { background-color: #17a2b8; }
+        .btn-publish:hover { background-color: #138496; }
+        .btn-telegram { background-color: #007bff; }
+
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .data-table th, .data-table td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        .data-table th { background-color: var(--light-green); color: #333; }
+        .grade-input { width: 60px; padding: 5px; text-align: center; border: 1px solid #ccc; border-radius: 4px; }
+        .table-responsive { overflow-x: auto; }
+    </style>
+    <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body class="teacher-page">
+    <header class="header">
+        <h1><i class="fas fa-chalkboard-teacher"></i> لوحة المدرس</h1>
+        <div class="user-info">
+            <span id="userName">جاري التحميل...</span>
+            <button id="logoutBtn"><i class="fas fa-sign-out-alt"></i> تسجيل خروج</button>
+        </div>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-button active" onclick="showTab('gradesTab')"><i class="fas fa-star"></i> التقييم والدرجات</button>
+        <button class="tab-button" onclick="showTab('absencesTab')"><i class="fas fa-user-times"></i> الغيابات</button>
+        <button class="tab-button" onclick="showTab('homeworkTab')"><i class="fas fa-book-open"></i> الواجبات</button>
+        <button class="tab-button" onclick="showTab('evaluationsTab')"><i class="fas fa-clipboard-check"></i> التقييم اليومي</button>
+        <button class="tab-button" onclick="showTab('libraryTab')"><i class="fas fa-book"></i> المكتبة الرقمية</button>
+        <button class="tab-button" onclick="showTab('announcementsTab')"><i class="fas fa-bullhorn"></i> الأخبار والتبليغات</button>
+        <button class="tab-button" onclick="showTab('teacherSchedulesTab')"><i class="fas fa-calendar-alt"></i> الجداول</button>
+        <button class="tab-button" onclick="showTab('objectionsTab')"><i class="fas fa-balance-scale"></i> الاعتراضات والملاحظات</button>
+        <button class="tab-button" onclick="showTab('masterExcelTab')" style="display:none;"><i class="fas fa-table"></i> الإكسل الشامل</button>
+    </div>
+
+    <div class="container">
+        <div id="gradesTab" class="tab-content" style="display: block;">
+            <h2>التقييم والدرجات</h2>
+            <div class="controls">
+                <select id="teacherClasses" onchange="updateTeacherFilters('teacher')" required><option value="">-- اختر الصف --</option></select>
+                <select id="teacherSections" required><option value="">-- اختر الشعبة --</option></select>
+                <select id="teacherSubjects" required><option value="">-- اختر المادة --</option></select>
+                <button type="button" id="loadStudentsBtn" class="button btn-publish">عرض الطلاب للتقييم</button>
+            </div>
+            <div class="controls" style="background: transparent; padding: 0; margin-bottom: 20px;">
+                <button type="button" id="downloadExcelBtn" class="button"><i class="fas fa-download"></i> تنزيل قالب إكسل</button>
+                <input type="file" id="uploadExcelInput" accept=".xlsx, .xls" style="display: none;">
+                <button type="button" onclick="document.getElementById('uploadExcelInput').click()" class="button btn-publish"><i class="fas fa-upload"></i> رفع الدرجات من إكسل</button>
+            </div>
+            <form id="gradesForm">
+                <div id="studentsGradeContainer">
+                    <p>الرجاء اختيار الصف والشعبة والمادة وعرض الطلاب لإدخال الدرجات.</p>
+                </div>
+                <button type="submit" id="submitGradesBtn" class="button btn-publish" style="display: none; margin-top: 20px; width: 100%;"><i class="fas fa-paper-plane"></i> حفظ وإرسال الدرجات للمراجعة</button>
+            </form>
+        </div>
+
+        <div id="absencesTab" class="tab-content" style="display: none;">
+            <h2>تسجيل الغيابات</h2>
+            <div class="controls">
+                <select id="absenceClasses" onchange="updateTeacherFilters('absence')" required><option value="">-- اختر الصف --</option></select>
+                <select id="absenceSections" required><option value="">-- اختر الشعبة --</option></select>
+                <input type="date" id="absenceDate" required>
+                <button type="button" id="loadStudentsForAbsenceBtn" class="button btn-publish">عرض الطلاب</button>
+            </div>
+            <form id="absenceForm">
+                <div id="studentsForAbsenceContainer" style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #ddd;">
+                    <p>الرجاء اختيار الصف والشعبة والتاريخ لعرض الطلاب.</p>
+                </div>
+                <input type="text" id="absenceNotes" placeholder="ملاحظات عامة عن الغياب (اختياري)" style="width: 100%; margin-bottom: 15px;">
+                <button type="submit" id="submitAbsencesBtn" class="button" style="display: none; width: 100%;"><i class="fas fa-save"></i> حفظ وإرسال الغيابات</button>
+            </form>
+        </div>
+
+        <div id="homeworkTab" class="tab-content">
+            <h2>إرسال الواجبات</h2>
+            <form id="homeworkForm">
+                <div class="controls">
+                    <select id="hwClasses" onchange="updateTeacherFilters('hw')" required><option value="">-- اختر الصف --</option></select>
+                    <select id="hwSections" required><option value="">-- اختر الشعبة --</option></select>
+                    <select id="hwSubjects" required><option value="">-- اختر المادة --</option></select>
+                </div>
+                <textarea id="hwContent" rows="5" placeholder="اكتب تفاصيل الواجب هنا..." required style="width: 100%; margin-bottom: 15px;"></textarea>
+                <button type="submit" class="button btn-publish" style="width: 100%;"><i class="fas fa-paper-plane"></i> إرسال الواجب للمراجعة</button>
+            </form>
+            
+            <h3 style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px;">الواجبات المرسلة مسبقاً والإحصائيات</h3>
+            <button type="button" id="loadSentHomeworkBtn" class="button" style="margin-bottom: 15px;"><i class="fas fa-sync"></i> تحديث القائمة</button>
+            <div id="sentHomeworkContainer"></div>
+        </div>
+
+        <div id="evaluationsTab" class="tab-content">
+            <h2>التقييم اليومي</h2>
+            <div class="controls">
+                <select id="evalClasses" onchange="updateTeacherFilters('eval')" required><option value="">-- اختر الصف --</option></select>
+                <select id="evalSections" required><option value="">-- اختر الشعبة --</option></select>
+                <select id="evalSubjects" required><option value="">-- اختر المادة --</option></select>
+                <input type="date" id="evalDate" required>
+                <button type="button" id="loadStudentsForEvalBtn" class="button btn-publish">عرض الطلاب</button>
+            </div>
+            <form id="evaluationsForm">
+                <div id="studentsForEvalContainer"><p>الرجاء اختيار الصف والشعبة والمادة لعرض الطلاب.</p></div>
+                <button type="submit" id="submitEvaluationsBtn" class="button" style="display: none; margin-top: 20px; width: 100%;"><i class="fas fa-save"></i> حفظ وإرسال التقييمات للمراجعة</button>
+            </form>
+        </div>
+
+        <div id="libraryTab" class="tab-content">
+            <h2>إضافة للمكتبة الرقمية</h2>
+            <form id="libraryForm">
+                <div class="controls">
+                    <select id="libClasses" onchange="updateTeacherFilters('lib')" required><option value="">-- اختر الصف --</option></select>
+                    <select id="libSubjects" required><option value="">-- اختر المادة --</option></select>
+                </div>
+                <input type="text" id="libTitle" placeholder="عنوان المادة (مثال: ملزمة الفصل الأول)" required style="width: 100%; margin-bottom: 10px;">
+                <input type="url" id="libUrl" placeholder="رابط الملف (Google Drive, YouTube...)" required style="width: 100%; margin-bottom: 10px;">
+                <textarea id="libDescription" rows="3" placeholder="وصف قصير..." style="width: 100%; margin-bottom: 15px;"></textarea>
+                <button type="submit" class="button btn-publish" style="width: 100%;"><i class="fas fa-upload"></i> إضافة للمكتبة</button>
+            </form>
+        </div>
+
+        <div id="announcementsTab" class="tab-content">
+            <h2>الأخبار والتبليغات الإدارية</h2>
+            <div id="announcementsContainer"></div>
+        </div>
+
+        <div id="teacherSchedulesTab" class="tab-content">
+            <h2>الجداول الأسبوعية (الخاصة بي)</h2>
+            <div id="teacherScheduleContainer"></div>
+        </div>
+
+        <div id="objectionsTab" class="tab-content">
+            <h2>الاعتراضات والملاحظات المحولة</h2>
+            <div id="teacherObjectionsContainer"></div>
+        </div>
+
+        <div id="masterExcelTab" class="tab-content">
+            <h2>الإكسل الشامل للمدرس</h2>
+            <div class="controls">
+                <select id="masterClass" onchange="updateMasterExcelFilters()"><option value="">-- اختر الصف أولاً --</option></select>
+                <select id="masterSection"><option value="الكل">جميع الشعب</option></select>
+            </div>
+            
+            <h4 style="margin-top:15px; border-bottom: 2px solid #28a745; padding-bottom:5px;">1. حدد المواد المطلوبة:</h4>
+            <div id="masterSubjectsContainer" style="display: flex; flex-wrap: wrap; gap: 15px; background: #fff; padding: 15px; border: 1px solid #ccc; border-radius: 5px;">
+                <p style="color:#888;">الرجاء اختيار الصف لتظهر المواد المخصصة لك...</p>
+            </div>
+
+            <h4 style="margin-top:15px; border-bottom: 2px solid #28a745; padding-bottom:5px;">2. حدد السعيات أو أنواع الدرجات:</h4>
+            <div id="masterGradeTypesContainer" style="display: flex; flex-wrap: wrap; gap: 15px; background: #fff; padding: 15px; border: 1px solid #ccc; border-radius: 5px;">
+                <label><input type="checkbox" value="Term1_Month1"> شهر 1 (ف1)</label>
+                <label><input type="checkbox" value="Term1_Month2"> شهر 2 (ف1)</label>
+                <label><input type="checkbox" value="Term1_Month3"> شهر 3 (ف1)</label>
+                <label><input type="checkbox" value="Term1_Avg"> سعي (ف1)</label>
+                <label><input type="checkbox" value="MidYear_Exam"> نصف السنة</label>
+                <label><input type="checkbox" value="Term2_Month1"> شهر 1 (ف2)</label>
+                <label><input type="checkbox" value="Term2_Month2"> شهر 2 (ف2)</label>
+                <label><input type="checkbox" value="Term2_Month3"> شهر 3 (ف2)</label>
+                <label><input type="checkbox" value="Term2_Avg"> سعي (ف2)</label>
+                <label><input type="checkbox" value="Yearly_Effort" checked> السعي السنوي</label>
+                <label><input type="checkbox" value="Final_Exam"> الامتحان النهائي</label>
+                <label><input type="checkbox" value="Final_Result" checked> الدرجة النهائية</label>
+            </div>
+
+            <div class="controls" style="margin-top: 20px; background: transparent; padding: 0;">
+                <button type="button" onclick="downloadMasterExcel()" class="button btn-telegram" style="width: auto;"><i class="fas fa-download"></i> تنزيل إكسل شامل</button>
+                <input type="file" id="masterExcelUploadInput" accept=".xlsx, .xls" style="display: none;">
+                <button type="button" onclick="document.getElementById('masterExcelUploadInput').click()" class="button btn-publish" style="width: auto;"><i class="fas fa-upload"></i> رفع الإكسل الشامل</button>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="ui.js?v=1"></script>
+    <script src="script.js?v=5"></script>
+</body>
+</html>
