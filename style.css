@@ -508,3 +508,5 @@ tr.row-warn td{background:var(--warn-soft)!important}
 }
 .perm-table td.g-name{min-width:11rem;white-space:normal}
 @media print{html,body{background:#fff!important}body.shell-on{padding-right:0!important}}
+
+.server-old{background:var(--warn-soft)!important;border-right-color:var(--warn)!important;margin-bottom:16px}

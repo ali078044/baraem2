@@ -71,7 +71,14 @@
   if (FEAT) applyFeatures(FEAT);
   document.addEventListener('DOMContentLoaded', async () => {
     const r = await api('getMyFeatures');
-    if (r && r.success) { store.set('feat_' + me.userId, r); applyFeatures(r); }
+    if (r && r.success) { store.set('feat_' + me.userId, r); applyFeatures(r); return; }
+    // الخادم لم يُحدَّث: نوضح السبب للمدير والمدرس بدل أن تختفي الميزات بصمت
+    if (r && !r.network && PAGE !== 'student' && !$('#serverOld')) {
+      const b = document.createElement('div');
+      b.id = 'serverOld'; b.className = 'info-note server-old';
+      b.innerHTML = '<b>⚠️ الخادم يعمل بنسخة قديمة.</b> الامتحانات والصلاحيات لن تظهر حتى يُحدَّث. في Apps Script تأكد من وجود الملفات الثلاثة (Code و Notifications و Extensions) ثم: نشر ← إدارة عمليات النشر ← ✏️ ← إصدار جديد ← نشر.' + (r.message ? `<br><small>رد الخادم: ${esc(r.message)}</small>` : '');
+      const a = $('.container .page-title'); if (a) a.after(b);
+    }
   });
 
   // تحميل الوحدة عند أول فتح لتبويبها
