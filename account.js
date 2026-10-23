@@ -5,6 +5,13 @@
   const ss = { get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) {} } };
   const GMAIL = /^[a-z0-9](?:[a-z0-9._+-]{0,62}[a-z0-9])?@(gmail|googlemail)\.com$/i;
   const isLogin = !!document.getElementById('loginForm');
+  function suggestGmail(e) {
+    const m = String(e).replace(/\s+/g, '').match(/^([^@]+)@(.+)$/);
+    if (!m) return '';
+    const dom = m[2].toLowerCase();
+    const near = /^(g?m[aei]{0,2}i?l{0,2}|gamil|gmial|gnail|gmaik|gmsil|gmali|gmeil|gmil|gmal|gmai|gmaill)\.(c[o0]m?|cm|con|om|cpm|co)$/.test(dom) || /^gmail\.\w+$/.test(dom) || /^g\w{2,5}\.com$/.test(dom) && dom !== 'gmail.com';
+    return near ? m[1].toLowerCase() + '@gmail.com' : '';
+  }
 
   function dialog(html) {
     const ov = document.createElement('div');
@@ -45,7 +52,16 @@
     d.$('#accBack').onclick = () => { step(1); msg(m, ''); d.$('#accMail').focus(); };
     const send = async () => {
       const email = d.$('#accMail').value.trim().toLowerCase();
-      if (!GMAIL.test(email)) { msg(m, 'اكتب بريد Gmail صحيحاً ينتهي بـ ‎@gmail.com‎'); return; }
+      if (!GMAIL.test(email)) {
+        // تصحيح الأخطاء الشائعة: gmil / gmal / gamil / gmail.con ...
+        const fix = suggestGmail(email);
+        if (fix) {
+          m.className = 'acc-msg';
+          m.innerHTML = 'هل تقصد <button type="button" class="link-btn" dir="ltr" id="accFix">' + esc(fix) + '</button>؟';
+          d.$('#accFix').onclick = () => { d.$('#accMail').value = fix; msg(m, ''); d.$('#accMail').focus(); };
+        } else msg(m, 'اكتب بريد Gmail صحيحاً ينتهي بـ ‎@gmail.com‎');
+        return;
+      }
       const b = d.$('#accSend'); busy(b, true, 'جارِ الإرسال…');
       const r = await callApi('sendGmailCode', { email });
       busy(b, false, 'إرسال رمز التحقق');
