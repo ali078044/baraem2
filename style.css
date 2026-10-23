@@ -510,3 +510,99 @@ tr.row-warn td{background:var(--warn-soft)!important}
 @media print{html,body{background:#fff!important}body.shell-on{padding-right:0!important}}
 
 .server-old{background:var(--warn-soft)!important;border-right-color:var(--warn)!important;margin-bottom:16px}
+
+.deep-hit{outline:3px solid var(--accent)!important;outline-offset:2px;animation:deepPulse 1.2s ease 2}
+@keyframes deepPulse{50%{box-shadow:0 0 0 8px var(--accent-soft)}}
+
+/* ===== v4: print dialog, paper pages, results approval ===== */
+.result-send{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;border-color:var(--teal)!important;background:var(--teal-soft)!important}
+.result-send h3{margin:0 0 4px}
+.row-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.row-actions .button{min-height:32px!important;padding:5px 10px!important;font-size:.82rem!important}
+.mod-dialog.print-dialog{max-width:min(1100px,96vw);display:grid;grid-template-columns:minmax(0,20rem) minmax(0,1fr);gap:16px;padding:16px;height:min(92vh,900px)}
+.pd-side{overflow:auto;display:flex;flex-direction:column;gap:10px;padding-left:4px}
+.pd-group{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:0;display:flex;flex-direction:column;gap:6px}
+.pd-group legend{font-weight:600;padding:0 4px}
+.pd-group small{color:var(--muted)}
+.pd-warn{color:var(--warn);font-size:.84rem;margin:0}
+.pd-warn-inline{color:var(--bad);font-weight:600}
+.ok-inline{color:var(--ok);font-weight:600}
+.pd-btns{display:flex;flex-wrap:wrap;gap:6px}
+.pd-btns button,.seg-btns button,.pd-zoom button{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer;font-weight:500;font-size:.84rem}
+.pd-btns button:hover,.pd-zoom button:hover{border-color:var(--teal);color:var(--teal)}
+.seg-btns{display:inline-flex;gap:0}
+.seg-btns button{border-radius:0}
+.seg-btns button:first-child{border-radius:0 8px 8px 0}.seg-btns button:last-child{border-radius:8px 0 0 8px}
+.seg-btns button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.print-dialog .pr-list{max-height:30vh}
+.pd-preview{display:flex;flex-direction:column;min-width:0;min-height:0;background:#d9dedc;border-radius:10px;overflow:hidden}
+.pd-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
+.pd-zoom{margin-right:auto;display:flex;align-items:center;gap:4px}
+.pd-zoom span{min-width:3rem;text-align:center;font-variant-numeric:tabular-nums}
+.pd-stage{flex:1;overflow:auto;padding:12px;direction:ltr}
+.pd-scale{transform-origin:top left;display:flex;flex-direction:column;gap:12px;width:210mm}
+.pd-scale .paper-page{box-shadow:0 2px 10px rgba(0,0,0,.18)}
+@media (max-width:800px){.mod-dialog.print-dialog{grid-template-columns:minmax(0,1fr);height:auto;max-height:94vh;overflow:auto}.pd-preview{height:60vh}}
+
+/* صفحات الطباعة: نفس الشكل في المعاينة وعلى الورق */
+.paper-page{position:relative;width:210mm;height:297mm;background:#fff;color:#000;box-sizing:border-box;overflow:hidden;direction:rtl;font-family:var(--body)}
+.paper-page > svg{position:absolute;inset:0;width:210mm;height:297mm;display:block}
+.paper-page.q-page{padding:7mm 8mm;display:flex;flex-direction:column;height:auto;min-height:297mm;overflow:visible}
+.paper-page .q-page-head{display:flex;justify-content:space-between;gap:6mm;border-bottom:1.2px solid #000;padding-bottom:2mm;margin-bottom:3mm;font-size:1.1em}
+.paper-page .q-print{margin:0;padding:0 6mm 0 0;columns:2;column-gap:7mm;column-rule:.3px solid #bbb}
+.paper-page .q-print li{break-inside:avoid;margin-bottom:2.6mm;padding-bottom:1.6mm;border-bottom:.3px dashed #ccc}
+.paper-page .q-print li::marker{font-weight:700}
+.paper-page .q-print p{margin:0 0 1.2mm;line-height:1.5}
+.paper-page .q-print-opts{display:grid;grid-template-columns:1fr 1fr;gap:.8mm 4mm}
+.paper-page .q-print-opts.n5{grid-template-columns:1fr 1fr 1fr}
+.paper-page .q-print-opts span b{display:inline-block;min-width:5mm;font-weight:700}
+.paper-page .q-page-foot{margin-top:auto;text-align:center;font-size:9pt;color:#555;padding-top:2mm}
+.paper-page .key-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:1.5mm}
+.paper-page .key-grid span{border:.4px solid #555;border-radius:1.5mm;padding:1.2mm;text-align:center;font-size:12pt;font-weight:700}
+.paper-page .key-grid span b{display:block;font-size:8pt;color:#555;font-weight:400}
+.paper-page .key-grid span small{display:block;font-size:7pt;color:#777;font-weight:400}
+.combo-page .combo-q{position:absolute;top:134mm;bottom:24mm;right:10mm;left:10mm;overflow:hidden;column-fill:auto}
+.combo-page .combo-q .q-print{height:100%;column-fill:auto}
+@media print{
+  .paper-page{box-shadow:none!important;page-break-after:always;break-after:page}
+  .paper-page.q-page{height:auto}
+}
+
+.paper-page .q-print-opts.one-row{display:flex;flex-wrap:wrap;gap:.6mm 5mm}
+.paper-page .q-print-opts span{display:inline-flex;gap:1.2mm;align-items:baseline;white-space:nowrap}
+.combo-page .q-print li{margin-bottom:1.6mm;padding-bottom:1mm}
+.combo-page .q-print p{margin-bottom:.6mm;line-height:1.4}
+
+/* ---------------- ربط Gmail واستعادة كلمة المرور ---------------- */
+.acc-ov{position:fixed;inset:0;background:rgba(10,18,17,.55);display:grid;place-items:center;z-index:4000;padding:16px}
+.acc-box{background:var(--surface);color:var(--ink);border-radius:14px;width:min(420px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:22px 22px 14px;box-shadow:0 18px 50px rgba(0,0,0,.25);text-align:right}
+.acc-box h2{margin:4px 0 6px;font-size:1.2rem}
+.acc-icon{font-size:1.9rem;line-height:1}
+.acc-lead{color:var(--muted);margin:0 0 14px;font-size:.93rem}
+.acc-step{display:flex;flex-direction:column;gap:8px}
+.acc-step[hidden]{display:none!important}
+.acc-step label{font-weight:600;font-size:.88rem}
+.acc-step input{border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:1rem;width:100%;background:var(--surface)}
+.acc-step input:focus{border-color:var(--teal);outline:none;box-shadow:0 0 0 3px var(--teal-soft)}
+.acc-step .button{margin-top:4px}
+.acc-code{text-align:center;letter-spacing:.6em;font-size:1.4rem!important;font-variant-numeric:tabular-nums}
+.acc-sent{background:var(--teal-soft);color:var(--teal);border-radius:8px;padding:8px 10px;margin:0;font-size:.9rem}
+.acc-hint{color:var(--faint);font-size:.82rem;margin:2px 0 0}
+.acc-msg{color:var(--bad);min-height:1.2em;margin:10px 0 0;font-size:.9rem}
+.acc-msg.good{color:var(--ok)}
+.acc-foot{display:flex;justify-content:flex-start;border-top:1px solid var(--line-soft);margin-top:10px;padding-top:8px}
+.acc-box .link-btn{background:none;border:0;color:var(--teal);cursor:pointer;padding:0;font-weight:600;text-decoration:underline}
+.app-foot #appGmail{font-size:.8rem;direction:ltr;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.app-foot #appGmail.need{direction:rtl;border-color:var(--warn);color:#ffd99a}
+.forgot-link{background:none!important;border:0!important;color:var(--teal)!important;cursor:pointer;margin:10px auto 0;display:block;font-weight:600;text-decoration:underline;padding:4px!important;min-height:0!important}
+/* اختيار نوع تسجيل نتيجة الامتحان */
+.result-send{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.rs-kind{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rs-opt{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:10px;cursor:pointer;background:var(--surface)}
+.rs-opt:has(input:checked){border-color:var(--teal);background:var(--teal-soft)}
+.rs-opt input{margin-top:5px;accent-color:var(--teal)}
+.rs-opt b{display:block}
+.rs-opt small{color:var(--muted);font-size:.8rem;line-height:1.5}
+.result-send .controls[hidden]{display:none!important}
+.result-send #rsSend{align-self:flex-start}
+@media (max-width:560px){.rs-kind{grid-template-columns:1fr}.result-send #rsSend{align-self:stretch}}

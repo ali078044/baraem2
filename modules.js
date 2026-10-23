@@ -91,6 +91,26 @@
   };
   const bodyOf = id => $('#' + id + ' .mod-body');
 
+  // إبراز العنصر الذي جاء منه الإشعار (مثل امتحان معيّن)
+  function highlightDeep(tab, sel) {
+    const d = window.__deepArg;
+    if (!d || d.tab !== tab || !d.arg) return;
+    const el = $$(sel).find(x => x.dataset.id === d.arg);
+    if (!el) return;
+    window.__deepArg = null;
+    el.classList.add('deep-hit');
+    setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+    setTimeout(() => el.classList.remove('deep-hit'), 4000);
+  }
+  // إشعار وصل والتبويب مفتوح مسبقاً: نعيد تحميله ثم نبرز العنصر
+  window.addEventListener('deeplink', ev => {
+    const d = ev.detail || {};
+    if (d.initial || !LOADERS[d.tab]) return;
+    if (!loaded[d.tab]) return;   // التحميل الأول سيتكفل به
+    if (d.tab === 'chatTab' && d.arg && window.__openChat) { window.__deepArg = null; window.__openChat(d.arg); }
+    else LOADERS[d.tab]();
+  });
+
   /* ================================================================
      وليّ الأمر
      ================================================================ */
@@ -117,6 +137,9 @@
      ================================================================ */
   const MODE = { online: 'إلكتروني', paper: 'ورقي', both: 'إلكتروني وورقي' };
   const ST_CLS = { 'مسودة': 'mute', 'منشور': 'ok', 'مغلق': 'warn' };
+  const GRADE_OPTS = [['Term1_Month1', 'الفصل الأول — الشهر الأول'], ['Term1_Month2', 'الفصل الأول — الشهر الثاني'], ['Term1_Month3', 'الفصل الأول — الشهر الثالث'], ['MidYear_Exam', 'نصف السنة'], ['Term2_Month1', 'الفصل الثاني — الشهر الأول'], ['Term2_Month2', 'الفصل الثاني — الشهر الثاني'], ['Term2_Month3', 'الفصل الثاني — الشهر الثالث'], ['Final_Exam', 'النهائي']];
+  const sendAsLabel = sa => !sa ? 'كتقييم يومي' : sa.kind === 'monthly' ? 'كدرجة شهرية: ' + ((GRADE_OPTS.find(o => o[0] === sa.gradeType) || [])[1] || '') + ' (من ' + sa.outOf + ')' : 'كتقييم يومي بتاريخ ' + (sa.date || '');
+  const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   const LETTERS = ['أ', 'ب', 'ج', 'د', 'هـ'];
   function classesForMe() {
     if (PAGE === 'teacher') {
@@ -141,7 +164,8 @@
         <div class="exam-card" data-id="${esc(e.id)}">
           <div class="exam-top"><b>${esc(e.title)}</b><span class="st-chip ${ST_CLS[e.status] || 'mute'}">${esc(e.status)}</span></div>
           <div class="exam-meta">${esc(e.subject)} · ${esc(e.cls)}${e.section && e.section !== 'الكل' ? ' / ' + esc(e.section) : ''} · ${MODE[e.mode] || ''} · ${e.count} سؤال · ${e.total} درجة${e.settings && e.settings.duration && e.mode !== 'paper' ? ' · ' + e.settings.duration + ' دقيقة' : ''}</div>
-          <div class="exam-meta">${e.submitted ? `سلّم ${e.submitted} طالب · المعدل ${e.avgPct}%` : 'لا نتائج بعد'}${PAGE === 'admin' ? ' · ' + esc(e.teacherName) : ''}</div>
+          <div class="exam-meta">${e.submitted ? `سلّم ${e.submitted} طالب · المعدل ${e.avgPct}%` : 'لا نتائج بعد'}${PAGE === 'admin' ? ' · ' + esc(e.teacherName) : ''}
+            ${e.resultState === 'pending' ? ' <span class="st-chip warn">النتائج بانتظار اعتماد الإدارة</span>' : e.resultState === 'published' ? ' <span class="st-chip ok">النتائج منشورة للطلاب</span>' : ''}</div>
           <div class="exam-actions">
             <button type="button" data-a="edit">تعديل</button>
             ${e.status !== 'منشور' && e.mode !== 'paper' ? '<button type="button" data-a="publish">نشر للطلاب</button>' : ''}
@@ -152,6 +176,7 @@
           </div>
         </div>`).join('')}</div>` : '<p class="empty-note">لا توجد امتحانات بعد. اضغط «امتحان جديد».</p>'}`;
     $('#exNew').onclick = () => examEditor(null, canOnline, canPaper);
+    highlightDeep('examsTab', '.exam-card');
     $$('.exam-card', el).forEach(card => card.addEventListener('click', async e => {
       const b = e.target.closest('[data-a]'); if (!b) return;
       const id = card.dataset.id, a = b.dataset.a;
@@ -176,7 +201,7 @@
   function examEditor(exam, canOnline, canPaper) {
     const el = bodyOf('examsTab');
     const C = classesForMe();
-    const x = exam || { title: '', subject: '', cls: C.classes[0] || '', section: 'الكل', mode: canOnline ? 'online' : 'paper', settings: { duration: 30, showResult: 'after_close', showAnswers: false, shuffle: true }, questions: [] };
+    const x = exam || { title: '', subject: '', cls: C.classes[0] || '', section: 'الكل', mode: canOnline ? 'online' : 'paper', settings: { duration: 30, showResult: 'admin', showAnswers: false, shuffle: true }, questions: [] };
     let qs = (x.questions || []).map(q => ({ text: q.text || '', options: q.options.slice(), correct: q.correct, marks: q.marks || 1 }));
     if (!qs.length) qs = [{ text: '', options: ['', '', '', ''], correct: -1, marks: 1 }];
     const dtLocal = v => v ? new Date(v).toISOString().slice(0, 16) : '';
@@ -196,8 +221,8 @@
           <label class="on-online">يفتح من (اختياري)<input type="datetime-local" id="exStart" value="${dtLocal(x.settings.start)}"></label>
           <label class="on-online">يُغلق في (اختياري)<input type="datetime-local" id="exEnd" value="${dtLocal(x.settings.end)}"></label>
           <label class="on-online">عرض النتيجة للطالب<select id="exShow">
+            <option value="admin" ${!x.settings.showResult || x.settings.showResult === 'admin' || x.settings.showResult === 'after_close' ? 'selected' : ''}>بعد اعتماد الإدارة (موصى به)</option>
             <option value="immediate" ${x.settings.showResult === 'immediate' ? 'selected' : ''}>فور التسليم</option>
-            <option value="after_close" ${x.settings.showResult === 'after_close' ? 'selected' : ''}>بعد إغلاق الامتحان</option>
             <option value="never" ${x.settings.showResult === 'never' ? 'selected' : ''}>لا تُعرض</option></select></label>
           <label class="chk on-online"><input type="checkbox" id="exShuffle" ${x.settings.shuffle ? 'checked' : ''}> ترتيب عشوائي للأسئلة لكل طالب</label>
           <label class="chk on-online"><input type="checkbox" id="exAnswers" ${x.settings.showAnswers ? 'checked' : ''}> إظهار الإجابات الصحيحة مع النتيجة</label>
@@ -293,16 +318,23 @@
     const r = await api('getExamResults', { examId: id });
     if (!r.success) { el.innerHTML = `<p class="empty-note">${esc(r.message)}</p>`; return; }
     const s = r.summary, ex = r.exam;
+    const sa = (ex.settings || {}).sendAs;
     const sorted = r.rows.slice().sort((a, b) => (b.total ? b.score / b.total : -1) - (a.total ? a.score / a.total : -1));
     el.innerHTML = `
       <div class="mod-toolbar"><button type="button" class="button btn-ghost" id="rsBack">‹ رجوع</button><b>${esc(ex.title)}</b><span class="muted">${esc(ex.subject)} · ${esc(ex.cls)} ${ex.section !== 'الكل' ? esc(ex.section) : ''}</span></div>
       <div class="stat-tiles"><div><span>سلّموا</span><b>${s.submitted}/${s.students}</b></div><div><span>المعدل</span><b>${s.avg == null ? '—' : s.avg + '%'}</b></div>
         <div><span>أعلى</span><b>${s.max == null ? '—' : s.max + '%'}</b></div><div><span>أدنى</span><b>${s.min == null ? '—' : s.min + '%'}</b></div><div><span>ناجحون (50%+)</span><b>${s.passed}</b></div></div>
-      <div class="form-section"><h3>نقل الدرجات إلى سجل الدرجات</h3>
-        <div class="controls"><select id="rsType"><option value="Term1_Month1">الفصل الأول — ش1</option><option value="Term1_Month2">الفصل الأول — ش2</option><option value="Term1_Month3">الفصل الأول — ش3</option><option value="MidYear_Exam">نصف السنة</option><option value="Term2_Month1">الفصل الثاني — ش1</option><option value="Term2_Month2">الفصل الثاني — ش2</option><option value="Term2_Month3">الفصل الثاني — ش3</option><option value="Final_Exam">النهائي</option></select>
-        <label>من<input type="number" id="rsOut" value="100" min="1" max="100" style="width:5rem"></label>
-        <button type="button" class="button btn-publish" id="rsTransfer">إرسال للإدارة للمراجعة</button></div>
-        <p class="muted">تُحوَّل درجة كل طالب إلى النسبة المطلوبة (مثلاً من 100)، وتمر على موافقة الإدارة. الشهر يجب أن يكون مفتوحاً.</p></div>
+      <div class="form-section result-send"><div class="rs-head"><h3>إرسال النتائج</h3>
+        <p class="muted">${ex.resultState === 'published' ? 'النتائج منشورة، ويراها الطلاب وأولياء أمورهم.' + (sa ? ' (' + esc(sendAsLabel(sa)) + ')' : '') : ex.resultState === 'pending' ? 'أُرسلت النتائج ' + esc(sendAsLabel(sa)) + '، وهي بانتظار اعتماد الإدارة.' : PAGE === 'admin' ? 'اختر كيف تُسجَّل النتيجة ثم انشرها، ويصل الطلاب إشعار.' : 'بعد اكتمال التصحيح اختر كيف تُسجَّل النتيجة وأرسلها للإدارة. بعد اعتمادها تظهر للطلاب ويصلهم إشعار.'}</p></div>
+        ${ex.resultState === 'published' ? '<span class="st-chip ok">منشورة ✓</span>' : `
+        <div class="rs-kind" role="radiogroup" aria-label="نوع التسجيل">
+          <label class="rs-opt"><input type="radio" name="rsKind" value="daily" ${!sa || sa.kind !== 'monthly' ? 'checked' : ''}><span><b>تقييم يومي</b><small>يظهر في تقييمات الطالب بمستوى (جيد/متوسط/ضعيف) مع الدرجة</small></span></label>
+          <label class="rs-opt"><input type="radio" name="rsKind" value="monthly" ${sa && sa.kind === 'monthly' ? 'checked' : ''}><span><b>درجة شهرية</b><small>تُسجَّل في سجل الدرجات للشهر الذي تختاره</small></span></label>
+        </div>
+        <div class="controls rs-daily"><label>تاريخ التقييم <input type="date" id="rsDate" value="${esc((sa && sa.date) || today())}"></label></div>
+        <div class="controls rs-monthly"><select id="rsType" aria-label="الشهر">${GRADE_OPTS.map(o => `<option value="${o[0]}" ${sa && sa.gradeType === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select>
+          <label>الدرجة من <input type="number" id="rsOut" value="${(sa && sa.outOf) || 100}" min="1" max="100" style="width:5rem"></label></div>
+        <button type="button" class="button btn-publish" id="rsSend">${PAGE === 'admin' ? 'اعتماد ونشر للطلاب' : ex.resultState === 'pending' ? 'إعادة الإرسال بعد التعديل' : 'حفظ وإرسال النتائج للإدارة'}</button>`}</div>
       <div class="table-responsive"><table class="data-table"><thead><tr><th>#</th><th>الطالب</th><th>الدرجة</th><th>النسبة</th><th>الطريقة</th><th>الحالة</th><th></th></tr></thead>
         <tbody>${sorted.map((x, i) => `<tr><td>${i + 1}</td><td class="g-name">${esc(x.name)}</td><td>${x.total ? `${x.score} / ${x.total}` : '—'}</td>
           <td>${x.total ? `<span class="pct-bar"><i style="width:${Math.round(x.score / x.total * 100)}%" class="${x.score / x.total < .5 ? 'low' : ''}"></i><b>${Math.round(x.score / x.total * 100)}%</b></span>` : ''}</td>
@@ -313,40 +345,106 @@
           return `<div class="q-stat"><b>${q.n}</b><span class="pct-bar"><i style="width:${q.pct || 0}%" class="${(q.pct || 0) < 50 ? 'low' : ''}"></i><b>${q.pct == null ? '—' : q.pct + '%'}</b></span>
             <small>الصحيحة ${LETTERS[qq.correct] || ''}${wrongPick && wrongPick[0] ? ' · أكثر خطأ: ' + LETTERS[wrongPick[1]] + ' (' + wrongPick[0] + ')' : ''}</small></div>`; }).join('')}</div></div>`;
     $('#rsBack').onclick = teacherExams;
-    $('#rsTransfer').onclick = async () => { const x = await api('transferExamToGrades', { examId: id, gradeType: $('#rsType').value, outOf: +$('#rsOut').value }); if (x.success) say(x.message); };
+    const syncKind = () => { const k = ($('[name=rsKind]:checked', el) || {}).value; const d = $('.rs-daily', el), m = $('.rs-monthly', el); if (d) d.hidden = k !== 'daily'; if (m) m.hidden = k !== 'monthly'; };
+    $$('[name=rsKind]', el).forEach(x => x.onchange = syncKind); syncKind();
+    if ($('#rsSend')) $('#rsSend').onclick = async () => {
+      const kind = $('[name=rsKind]:checked', el).value;
+      const p = kind === 'monthly' ? { kind, gradeType: $('#rsType').value, outOf: +$('#rsOut').value } : { kind, date: $('#rsDate').value };
+      const btn = $('#rsSend'); btn.disabled = true;
+      const x = await api('submitExamResults', Object.assign({ examId: id }, p));
+      btn.disabled = false;
+      if (x.success) { say(x.message); examResults(id); }
+    };
     $$('[data-reset]', el).forEach(b => b.onclick = async () => { if (await confirmBox('إلغاء محاولة هذا الطالب ليمتحن من جديد؟')) { const x = await api('resetAttempt', { examId: id, studentId: b.dataset.reset }); if (x.success) { say(x.message); examResults(id); } } });
   }
 
-  /* ---------------- طباعة أوراق الإجابة ---------------- */
+  /* ---------------- طباعة أوراق الإجابة (مع معاينة) ---------------- */
   async function printSheets(id) {
     const r = await api('getExamForPrint', { examId: id });
     if (!r.success) return;
-    const ex = r.exam;
+    const ex = r.exam, n = ex.questions.length, hasText = ex.questions.some(q => q.text);
+    const comboMax = OMR.maxFor('B2');
     const ov = document.createElement('div'); ov.className = 'mod-overlay';
-    ov.innerHTML = `<div class="mod-dialog wide"><h3>طباعة: ${esc(ex.title)}</h3>
-      <p class="muted">ورقة إجابة لكل طالب، رأسها سطر واحد فيه اسمه وعنوان الامتحان، ورمز يتعرف عليه الهاتف. اطبع على ورق A4 بحجم 100% دون تصغير.</p>
-      <label class="chk"><input type="checkbox" id="prQ" ${ex.questions.some(q => q.text) ? 'checked' : ''}> طباعة ورقة الأسئلة مع كل ورقة إجابة (باسم الطالب، بدون الإجابات)</label>
-      <label class="chk"><input type="checkbox" id="prKey" checked> طباعة ورقة مفتاح الإجابات للمدرس (صفحة واحدة في البداية)</label>
-      <label class="chk"><input type="checkbox" id="prDone"> استثناء من صُحّحت ورقته</label>
-      <div class="pr-list">${r.students.map(s => `<label class="chk"><input type="checkbox" value="${esc(s.id)}" ${s.result ? 'data-done="1"' : ''} checked> ${esc(s.name)} ${s.section ? '<small>' + esc(s.section) + '</small>' : ''}${s.result ? ` <span class="st-chip ok">${s.result.score}/${s.result.total}</span>` : ''}</label>`).join('')}</div>
-      <div class="mod-toolbar"><button type="button" class="button btn-publish" data-print><i class="fas fa-print"></i> طباعة</button><button type="button" class="button btn-ghost" data-n>إغلاق</button></div></div>`;
+    ov.innerHTML = `<div class="mod-dialog print-dialog">
+      <div class="pd-side">
+        <h3>طباعة: ${esc(ex.title)}</h3>
+        <p class="muted">${n} سؤال · ${ex.total} درجة · ${r.students.length} طالب</p>
+        <fieldset class="pd-group"><legend>شكل الورقة</legend>
+          <label class="chk"><input type="radio" name="prLayout" value="combined" ${n <= comboMax && hasText ? 'checked' : ''} ${n > comboMax ? 'disabled' : ''}> الأسئلة والإجابات في ورقة واحدة <small>(الدوائر أعلى الورقة والأسئلة تحتها · حتى ${comboMax} سؤالاً)</small></label>
+          <label class="chk"><input type="radio" name="prLayout" value="separate" ${n > comboMax || !hasText ? 'checked' : ''}> ورقة إجابة منفصلة <small>(حتى ${OMR.MAXQ} سؤالاً)</small></label>
+          <label class="chk pd-sep"><input type="checkbox" id="prQ" ${hasText ? 'checked' : ''} ${hasText ? '' : 'disabled'}> مع ورقة أسئلة منفصلة لكل طالب</label>
+          ${n > comboMax ? `<p class="pd-warn">الورقة الواحدة تتسع لـ ${comboMax} سؤالاً فقط، وهذا الامتحان ${n} سؤالاً.</p>` : ''}
+          ${hasText ? '' : '<p class="muted">لم تكتب نص الأسئلة، فتُطبع ورقة الإجابة فقط.</p>'}
+        </fieldset>
+        <fieldset class="pd-group"><legend>حجم خط الأسئلة</legend>
+          <div class="seg-btns" id="prFont"><button type="button" data-f="9">صغير</button><button type="button" data-f="10.5" class="on">متوسط</button><button type="button" data-f="12">كبير</button></div>
+          <span class="muted">أعمدة الأسئلة</span>
+          <div class="seg-btns" id="prCols"><button type="button" data-c="1">1</button><button type="button" data-c="2" class="on">2</button><button type="button" data-c="3">3</button></div>
+          <label class="chk"><input type="checkbox" id="prKey" checked> صفحة مفتاح الإجابات للمدرس</label>
+        </fieldset>
+        <fieldset class="pd-group"><legend>الطلاب <span id="prCount" class="muted"></span></legend>
+          <div class="pd-btns"><button type="button" data-sel="all">تحديد الكل</button><button type="button" data-sel="none">إلغاء الكل</button><button type="button" data-sel="undone">غير المصحَّحين فقط</button></div>
+          <div class="pr-list">${r.students.map(s => `<label class="chk"><input type="checkbox" value="${esc(s.id)}" ${s.result ? 'data-done="1"' : ''} checked> ${esc(s.name)} ${s.section ? '<small>' + esc(s.section) + '</small>' : ''}${s.result ? ` <span class="st-chip ok">${s.result.score}/${s.result.total}</span>` : ''}</label>`).join('')}</div>
+        </fieldset>
+        <div class="mod-toolbar"><button type="button" class="button btn-publish" data-print><i class="fas fa-print"></i> طباعة</button><button type="button" class="button btn-ghost" data-n>إغلاق</button></div>
+        <p class="muted">اطبع على A4 بمقياس 100% (لا تختر «ملاءمة الصفحة»).</p>
+      </div>
+      <div class="pd-preview">
+        <div class="pd-bar"><b>معاينة</b><span id="prFit" class="muted"></span><span class="pd-zoom"><button type="button" data-z="-">−</button><span id="prZ">60%</span><button type="button" data-z="+">+</button><button type="button" data-z="fit">ملاءمة</button></span></div>
+        <div class="pd-stage" id="prStage"></div>
+      </div></div>`;
     document.body.appendChild(ov);
-    $('#prDone', ov).onchange = e => $$('.pr-list input[data-done]', ov).forEach(c => { c.checked = !e.target.checked; });
+    let font = 10.5, zoom = 0.6, cols = 2;
+    const chosen = () => $$('.pr-list input:checked', ov).map(c => c.value);
+    const layout = () => (($('input[name=prLayout]:checked', ov) || {}).value) || 'separate';
+    // الاختيارات القصيرة في سطر واحد لتوفير المساحة
+    const qList = () => `<ol class="q-print" style="columns:${cols}">${ex.questions.map(q => `<li><p>${esc(q.text) || '&nbsp;'}</p><div class="q-print-opts n${q.options.length} ${Math.max.apply(null, q.options.map(o => String(o).length)) <= (cols === 3 ? 7 : 12) ? 'one-row' : ''}">${q.options.map((o, k) => `<span><b>${LETTERS[k]}</b> ${esc(o)}</span>`).join('')}</div></li>`).join('')}</ol>`;
+    const sheet = (s, lid) => OMR.sheetSVG({ examId: ex.id, studentId: s.id, studentName: s.name, title: ex.title + ' · ' + ex.subject, count: n, options: ex.questions.map(q => q.options.length), layout: lid });
+    const pagesFor = s => {
+      if (layout() === 'combined') return `<section class="print-page paper-page combo-page">${sheet(s, 'B2')}<div class="combo-q" style="font-size:${font}pt">${qList()}</div></section>`;
+      return `<section class="print-page paper-page">${sheet(s, 'B1')}</section>` + ($('#prQ', ov).checked && hasText ? `<section class="print-page paper-page q-page" style="font-size:${font}pt"><div class="q-page-head"><b>${esc(s.name)}</b><span>${esc(ex.title)} · ${esc(ex.subject)}</span></div>${qList()}<div class="q-page-foot">ظلّل إجابتك في ورقة الإجابة المرفقة</div></section>` : '');
+    };
+    const keyPage = () => `<section class="print-page paper-page q-page key-page"><div class="q-page-head"><b>مفتاح الإجابات — للمدرس فقط</b><span>${esc(ex.title)} · ${esc(ex.subject)} · ${n} سؤال · ${ex.total} درجة</span></div>
+      <div class="key-grid">${ex.questions.map((q, i) => `<span><b>${i + 1}</b>${LETTERS[q.correct]}<small>${q.marks}</small></span>`).join('')}</div></section>`;
+    function preview() {
+      const ids = chosen();
+      $('#prCount', ov).textContent = `(${ids.length} من ${r.students.length})`;
+      $('.pd-sep', ov).hidden = layout() === 'combined';
+      const st = r.students.find(x => ids.indexOf(x.id) > -1) || r.students[0];
+      const stage = $('#prStage', ov);
+      stage.innerHTML = st ? `<div class="pd-scale" style="transform:scale(${zoom})">${pagesFor(st)}</div>` : '<p class="empty-note">اختر طالباً.</p>';
+      const sc = $('.pd-scale', stage);
+      if (sc) { sc.style.marginBottom = `${-(1 - zoom) * sc.scrollHeight}px`; sc.style.marginRight = `${-(1 - zoom) * sc.scrollWidth}px`; }
+      $('#prZ', ov).textContent = Math.round(zoom * 100) + '%';
+      // هل تتسع الأسئلة؟
+      const box = $('.combo-q', stage), fit = $('#prFit', ov);
+      if (layout() === 'combined' && box) {
+        // نتحقق أن آخر سؤال يقع داخل المساحة المخصصة للأسئلة
+        const br = box.getBoundingClientRect(), items = $$('li', box), last = items[items.length - 1];
+        const lr = last ? last.getBoundingClientRect() : br;
+        const over = !!last && (lr.left < br.left - 1 || lr.right > br.right + 1 || lr.bottom > br.bottom + 1);
+        fit.innerHTML = over ? '<span class="pd-warn-inline">⚠️ الأسئلة لا تتسع في الورقة. صغّر الخط أو اختر الورقة المنفصلة.</span>' : '<span class="ok-inline">✓ كل الأسئلة تتسع في ورقة واحدة</span>';
+        fit.dataset.over = over ? '1' : '';
+      } else { fit.textContent = `${n} سؤال في ورقة إجابة واحدة`; fit.dataset.over = ''; }
+    }
+    preview();
+    ov.addEventListener('change', e => { if (e.target.closest('.pr-list') || e.target.name === 'prLayout' || e.target.id === 'prQ') preview(); });
     ov.addEventListener('click', e => {
+      const sel = e.target.closest('[data-sel]');
+      if (sel) { $$('.pr-list input', ov).forEach(c => { c.checked = sel.dataset.sel === 'all' ? true : sel.dataset.sel === 'none' ? false : !c.dataset.done; }); return preview(); }
+      const cb = e.target.closest('[data-c]');
+      if (cb) { cols = +cb.dataset.c; $$('#prCols button', ov).forEach(b => b.classList.toggle('on', b === cb)); return preview(); }
+      const f = e.target.closest('[data-f]');
+      if (f) { font = +f.dataset.f; $$('#prFont button', ov).forEach(b => b.classList.toggle('on', b === f)); return preview(); }
+      const z = e.target.closest('[data-z]');
+      if (z) { const w = $('#prStage', ov).clientWidth; zoom = z.dataset.z === '+' ? Math.min(1.5, zoom + 0.1) : z.dataset.z === '-' ? Math.max(0.25, zoom - 0.1) : Math.max(0.25, (w - 24) / (210 * 3.78)); return preview(); }
       if (e.target.closest('[data-n]') || e.target === ov) return ov.remove();
       if (!e.target.closest('[data-print]')) return;
-      const ids = $$('.pr-list input:checked', ov).map(c => c.value);
+      const ids = chosen();
       if (!ids.length) return say('اختر طالباً واحداً على الأقل.', true);
-      const withQ = $('#prQ', ov).checked, withKey = $('#prKey', ov).checked;
+      if ($('#prFit', ov).dataset.over && !confirm('الأسئلة لا تتسع كاملة في الورقة. هل تطبع على أي حال؟')) return;
       let area = $('#printArea'); if (!area) { area = document.createElement('div'); area.id = 'printArea'; document.body.appendChild(area); }
-      // ورقة الأسئلة: رأس بسطر واحد (اسم الطالب وعنوان الامتحان)، أسئلة مرقّمة، واختيارات مرتبة في شبكة. لا تُطبع الإجابة الصحيحة.
-      const qPage = name => `<section class="print-page q-page"><div class="q-page-head"><b>${esc(name)}</b><span>${esc(ex.title)} · ${esc(ex.subject)}</span></div>
-        <ol class="q-print">${ex.questions.map(q => `<li><p>${esc(q.text) || '&nbsp;'}</p><div class="q-print-opts n${q.options.length}">${q.options.map((o, k) => `<span><b>${LETTERS[k]}</b> ${esc(o)}</span>`).join('')}</div></li>`).join('')}</ol>
-        <div class="q-page-foot">ظلّل إجابتك في ورقة الإجابة المرفقة</div></section>`;
-      const keyPage = `<section class="print-page q-page key-page"><div class="q-page-head"><b>مفتاح الإجابات — للمدرس فقط</b><span>${esc(ex.title)} · ${esc(ex.subject)} · ${ex.questions.length} سؤال · ${ex.total} درجة</span></div>
-        <div class="key-grid">${ex.questions.map((q, i) => `<span><b>${i + 1}</b>${LETTERS[q.correct]}<small>${q.marks}</small></span>`).join('')}</div></section>`;
-      area.innerHTML = (withKey ? keyPage : '') + r.students.filter(s => ids.indexOf(s.id) > -1).map(s =>
-        `<section class="print-page">${OMR.sheetSVG({ examId: ex.id, studentId: s.id, studentName: s.name, title: ex.title + ' · ' + ex.subject, count: ex.questions.length, options: ex.questions.map(q => q.options.length) })}</section>` + (withQ ? qPage(s.name) : '')).join('');
+      area.innerHTML = ($('#prKey', ov).checked ? keyPage() : '') + r.students.filter(s => ids.indexOf(s.id) > -1).map(pagesFor).join('');
       ov.remove();
       setTimeout(() => window.print(), 300);
     });
@@ -451,7 +549,15 @@
         try { wake = await navigator.wakeLock.request('screen'); } catch (e) {}
         try { if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
         loop();
-      } catch (e) { status.textContent = 'تعذّر فتح الكاميرا. اسمح للمتصفح باستخدامها، أو صحّح من صور المعرض.'; }
+      } catch (e) {
+        const n = e && e.name;
+        status.innerHTML = !window.isSecureContext ? 'الكاميرا تعمل فقط عبر رابط https (رابط GitHub). افتح المنصة من الرابط وليس من ملف على الجهاز.'
+          : n === 'NotAllowedError' ? 'رُفض إذن الكاميرا. اضغط رمز القفل 🔒 بجانب الرابط في الأعلى ← الأذونات ← الكاميرا ← سماح، ثم أعد تحميل الصفحة واضغط «ابدأ».'
+          : n === 'NotFoundError' ? 'لم يُعثر على كاميرا في هذا الجهاز. استخدم «صور من المعرض».'
+          : n === 'NotReadableError' ? 'الكاميرا مستخدمة في تطبيق آخر. أغلقه ثم اضغط «ابدأ» مرة أخرى.'
+          : 'تعذّر فتح الكاميرا. افتح المنصة في Chrome أو Safari (وليس من داخل واتساب أو تليجرام)، أو استخدم «صور من المعرض».';
+        $('#scStart', ov).hidden = false;
+      }
     };
     $('#scFiles', ov).onchange = async e => {
       for (const f of Array.from(e.target.files)) {
@@ -493,6 +599,7 @@
         ${e.score != null ? `<div class="exam-score"><span class="pct-bar"><i style="width:${Math.round(e.score / e.total * 100)}%" class="${e.score / e.total < .5 ? 'low' : ''}"></i><b>${e.score} / ${e.total}</b></span></div>` : e.resultNote ? `<div class="exam-meta">${esc(e.resultNote)}</div>` : ''}
         <div class="exam-actions">${e.available ? `<button type="button" class="button" data-start>${e.inProgress ? 'متابعة الامتحان' : 'ابدأ الامتحان'}</button>` : ''}${e.review ? '<button type="button" data-review>مراجعة الإجابات</button>' : ''}</div>
       </div>`; }).join('')}</div>`;
+    highlightDeep('examsTab', '.exam-card');
     $$('.exam-card', el).forEach(c => c.addEventListener('click', ev => {
       const e = r.exams.find(x => x.id === c.dataset.id);
       if (ev.target.closest('[data-start]')) takeExam(e);
@@ -598,7 +705,15 @@
       draw(); $('#ctQ', ov).oninput = draw; $('#ctQ', ov).focus();
       ov.onclick = ev => { const b = ev.target.closest('[data-id]'); if (b) { ov.remove(); open(b.dataset.id, b.dataset.name); } else if (ev.target.closest('[data-n]') || ev.target === ov) ov.remove(); };
     };
-    threads();
+    window.__openChat = async (id) => {
+      const t = await api('getChatThreads');
+      let name = ((t.threads || []).find(x => x.id === id) || {}).name;
+      if (!name) { if (!contacts) { const c = await api('getChatContacts'); contacts = c.contacts || []; } name = ((contacts || []).find(x => x.id === id) || {}).name || id; }
+      open(id, name);
+    };
+    await threads();
+    const d = window.__deepArg;
+    if (d && d.tab === 'chatTab' && d.arg) { window.__deepArg = null; window.__openChat(d.arg); }
     if (PAGE === 'admin') {
       const r = await api('getAllUsers');
       if (r.success) $('#chRevA').innerHTML += r.users.map(u => `<option value="${esc(u.userId)}">${esc(u.fullName)} (${esc(u.role)})</option>`).join('');
@@ -741,6 +856,35 @@
       return `<a class="lib-item" href="${esc(l.url)}" target="_blank" rel="noopener">${yt ? `<img src="https://i.ytimg.com/vi/${yt}/mqdefault.jpg" alt="" loading="lazy">` : ''}<b>${esc(l.title)}</b><small>${esc(l.subject || '')}</small>${l.description ? `<span>${esc(l.description)}</span>` : ''}</a>`;
     }).join('')}</div>`).join('');
   };
+
+  /* ---------------- المدير: اعتماد نتائج الامتحانات (في «قيد المراجعة») ---------------- */
+  if (PAGE === 'admin') {
+    const host = $('#pendingTab');
+    if (host) {
+      const sec = document.createElement('div');
+      sec.className = 'form-section'; sec.id = 'pendingExams';
+      sec.innerHTML = '<h3><i class="fas fa-file-signature"></i> 6. نتائج الامتحانات</h3><div class="pe-body"><p class="empty-note">جارِ التحميل…</p></div>';
+      host.appendChild(sec);
+      const load = async () => {
+        const r = await api('getPendingExamResults');
+        const b = $('.pe-body', sec);
+        if (!r || !r.success) { b.innerHTML = '<p class="muted">لا توجد نتائج امتحانات بانتظار الاعتماد.</p>'; return; }
+        b.innerHTML = r.items.length ? `<div class="table-responsive"><table class="data-table"><thead><tr><th>الامتحان</th><th>المادة</th><th>الصف</th><th>المدرس</th><th>التسجيل</th><th>سلّموا</th><th>المعدل</th><th>ناجحون</th><th></th></tr></thead><tbody>
+          ${r.items.map(x => `<tr data-id="${esc(x.id)}"><td class="g-name">${esc(x.title)}</td><td>${esc(x.subject)}</td><td>${esc(x.cls)} ${x.section !== 'الكل' ? esc(x.section) : ''}</td><td>${esc(x.teacherName)}</td><td><span class="st-chip ${(x.settings.sendAs || {}).kind === 'monthly' ? 'warn' : 'ok'}">${esc(sendAsLabel(x.settings.sendAs).replace(/^ك/, ''))}</span></td><td>${x.submitted}</td><td>${x.avg == null ? '—' : x.avg + '%'}</td><td>${x.passed}</td>
+            <td><div class="row-actions"><button type="button" class="button btn-approve" data-pe="approve">اعتماد ونشر للطلاب</button><button type="button" class="button btn-reject" data-pe="reject">إعادة للمدرس</button><button type="button" class="link-btn" data-pe="view">التفاصيل</button></div></td></tr>`).join('')}</tbody></table></div>`
+          : '<p class="muted">لا توجد نتائج امتحانات بانتظار الاعتماد.</p>';
+      };
+      sec.addEventListener('click', async e => {
+        const b = e.target.closest('[data-pe]'); if (!b) return;
+        const id = b.closest('tr').dataset.id;
+        if (b.dataset.pe === 'view') { showTab('examsTab'); setTimeout(() => examResults(id), 300); return; }
+        const x = await api('handleExamResults', { examId: id, action: b.dataset.pe });
+        if (x.success) { say(x.message); load(); }
+      });
+      document.addEventListener('DOMContentLoaded', () => setTimeout(load, 400));
+      window.addEventListener('deeplink', ev => { if ((ev.detail || {}).tab === 'pendingTab') load(); });
+    }
+  }
 
   /* ---------------- الإعدادات: مفاتيح الدرجات فقط (الميزات لها تبويبها) ---------------- */
   if (PAGE === 'admin' && typeof window.loadSystemSettings === 'function') {

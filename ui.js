@@ -143,26 +143,44 @@
     syncTitle();
   }
 
-  /* فتح التبويب المطلوب من رابط الإشعار (مثال: StudentInterface.html#gradesTab) */
+  /* فتح التبويب (والعنصر) المطلوب من رابط الإشعار.
+     صيغة الرابط: Page.html#tabId أو #tabId:itemId ، وقد ينتهي بـ ~رقم لجعل كل ضغطة فريدة */
+  function parseHash(h) {
+    h = decodeURIComponent(String(h || '').replace(/^#/, '')).split('~')[0];
+    var i = h.indexOf(':');
+    return { tab: i > -1 ? h.slice(0, i) : h, arg: i > -1 ? h.slice(i + 1) : '' };
+  }
+  window.parseDeepHash = parseHash;
+  function announce(d) {
+    window.__deepArg = d;
+    try { window.dispatchEvent(new CustomEvent('deeplink', { detail: d })); } catch (e) {}
+  }
   function deepLink() {
     var orig = window.showTab;
     if (typeof orig !== 'function') return;
-    var want = decodeURIComponent((location.hash || '').slice(1));
-    var pending = want && document.getElementById(want) ? want : '';
+    var want = parseHash(location.hash);
+    var pending = want.tab && document.getElementById(want.tab) ? want.tab : '';
     window.showTab = function (id) {
       // التحميل الأولي في script.js يفتح التبويب الافتراضي؛ نستبدله بالتبويب المطلوب من الرابط فقط
       if (pending && ['gradesTab', 'announcementsTab', 'pendingTab'].indexOf(id) > -1) id = pending;
-      var r = orig(id);
+      var r = window.__showTabRaw(id);
       try { history.replaceState(null, '', '#' + id); } catch (e) {}
       return r;
     };
+    window.__showTabRaw = orig;
     var tabs = document.querySelector('.tabs');
     if (tabs) tabs.addEventListener('click', function () { pending = ''; }, true);
     setTimeout(function () { pending = ''; }, 8000);
-    if (pending) orig(pending);
+    if (pending) { window.__deepArg = want; orig(pending); window.scrollTo(0, 0); announce(Object.assign({ initial: true }, want)); }
     window.addEventListener('hashchange', function () {
-      var h = decodeURIComponent(location.hash.slice(1));
-      if (h && document.getElementById(h)) { pending = ''; orig(h); }
+      var d = parseHash(location.hash);
+      if (d.tab && document.getElementById(d.tab)) {
+        pending = '';
+        orig(d.tab);
+        try { history.replaceState(null, '', '#' + d.tab); } catch (e) {}
+        window.scrollTo(0, 0);
+        announce(d);
+      }
     });
   }
 

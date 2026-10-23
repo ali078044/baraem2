@@ -15,7 +15,12 @@
   const when = iso => { const d = new Date(iso); if (isNaN(d)) return ''; const m = Math.round((Date.now() - d) / 6e4); if (m < 1) return 'الآن'; if (m < 60) return 'قبل ' + m + ' د'; if (m < 1440) return 'قبل ' + Math.round(m / 60) + ' س'; return d.toLocaleDateString('ar-IQ-u-nu-latn', { day: 'numeric', month: 'short' }); };
 
   function openTab(tab) {
-    if (tab && document.getElementById(tab) && typeof showTab === 'function') { showTab(tab); window.scrollTo(0, 0); }
+    const d = window.parseDeepHash ? window.parseDeepHash(tab) : { tab: tab, arg: '' };
+    if (d.tab && document.getElementById(d.tab) && typeof showTab === 'function') {
+      showTab(d.tab); window.scrollTo(0, 0);
+      window.__deepArg = d;
+      try { window.dispatchEvent(new CustomEvent('deeplink', { detail: d })); } catch (e) {}
+    }
   }
   window.openTabFromLink = openTab;
 

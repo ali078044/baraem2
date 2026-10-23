@@ -12,11 +12,18 @@
     optGap: 11, optStart: 15, r: 3.4,
     letters: ['أ', 'ب', 'ج', 'د']
   };
+  // B1: ورقة إجابة كاملة (حتى 60 سؤالاً) — B2: الإجابات أعلى الورقة والأسئلة تحتها (حتى 30 سؤالاً)
+  const LAYOUTS = {
+    B1: L,
+    B2: Object.assign({}, L, { rows: 10, rowY0: 46, rowH: 8.6, optGap: 10, optStart: 14, r: 3.1, textTop: 134, textBottom: 272 })
+  };
   const MAXQ = L.rows * L.colRight.length;
+  const maxFor = id => LAYOUTS[id].rows * LAYOUTS[id].colRight.length;
 
-  function bubbleCenter(q, k) {
-    const col = Math.floor(q / L.rows), row = q % L.rows;
-    return [L.colRight[col] - L.optStart - k * L.optGap, L.rowY0 + row * L.rowH];
+  function bubbleCenter(q, k, G) {
+    G = G || L;
+    const col = Math.floor(q / G.rows), row = q % G.rows;
+    return [G.colRight[col] - G.optStart - k * G.optGap, G.rowY0 + row * G.rowH];
   }
 
   /* ---------------- الطباعة: صفحة SVG لكل طالب ---------------- */
@@ -30,7 +37,9 @@
 
   function sheetSVG(opts) {
     // opts: { examId, studentId, studentName, title, count, options:[n per question], fill:[answers] (للتجربة فقط) }
-    const qr = qrPath(('B1:' + opts.examId + ':' + opts.studentId).toUpperCase());
+    const lid = LAYOUTS[opts.layout] ? opts.layout : 'B1';
+    const G = LAYOUTS[lid];
+    const qr = qrPath((lid + ':' + opts.examId + ':' + opts.studentId).toUpperCase());
     const m = L.marker;
     let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${L.W} ${L.H}" width="${L.W}mm" height="${L.H}mm" class="omr-sheet" font-family="'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif">`;
     s += `<rect width="${L.W}" height="${L.H}" fill="#fff"/>`;
@@ -43,22 +52,23 @@
     s += `<text x="188" y="38.5" direction="rtl" text-anchor="start" font-size="2.9" fill="#555">ظلّل دائرة واحدة فقط لكل سؤال بقلم أزرق أو أسود. لا تكتب قرب المربعات السوداء أو الرمز.</text>`;
     for (let q = 0; q < opts.count; q++) {
       const nOpt = Math.min(4, (opts.options && opts.options[q]) || 4);
-      const [x0, y] = bubbleCenter(q, 0);
+      const [x0, y] = bubbleCenter(q, 0, G);
       s += `<text x="${x0 + 9}" y="${y + 1.3}" text-anchor="middle" font-size="3.6" font-weight="700" fill="#000">${q + 1}</text>`;
       for (let k = 0; k < nOpt; k++) {
-        const [x] = bubbleCenter(q, k);
+        const [x] = bubbleCenter(q, k, G);
         // fill: للتجربة فقط (رسم إجابات معروفة)
         const filled = opts.fill && (opts.fill[q] === k || (Array.isArray(opts.fill[q]) && opts.fill[q].indexOf(k) > -1));
-        s += `<circle cx="${x}" cy="${y}" r="${L.r}" fill="#fff" stroke="#333" stroke-width=".35"/>`;
+        s += `<circle cx="${x}" cy="${y}" r="${G.r}" fill="#fff" stroke="#333" stroke-width=".35"/>`;
         s += `<text x="${x}" y="${y + 1.05}" text-anchor="middle" font-size="2.8" fill="#9a9a9a">${L.letters[k]}</text>`;
-        if (filled) s += opts.pen ? `<circle cx="${x + 0.3}" cy="${y - 0.2}" r="${L.r * 0.8}" fill="${opts.pen}" opacity=".82"/>` : `<circle cx="${x}" cy="${y}" r="${L.r}" fill="#1a1a1a"/>`;
+        if (filled) s += opts.pen ? `<circle cx="${x + 0.3}" cy="${y - 0.2}" r="${G.r * 0.8}" fill="${opts.pen}" opacity=".82"/>` : `<circle cx="${x}" cy="${y}" r="${G.r}" fill="#1a1a1a"/>`;
       }
     }
     // خط فاصل بين الأعمدة
-    for (let c = 1; c < Math.ceil(opts.count / L.rows); c++) {
-      const x = L.colRight[c] + 4.5;
-      s += `<line x1="${x}" y1="${L.rowY0 - 6}" x2="${x}" y2="${L.rowY0 + (L.rows - 1) * L.rowH + 6}" stroke="#ccc" stroke-width=".3"/>`;
+    for (let c = 1; c < Math.ceil(opts.count / G.rows); c++) {
+      const x = G.colRight[c] + 4.5;
+      s += `<line x1="${x}" y1="${G.rowY0 - 6}" x2="${x}" y2="${G.rowY0 + (G.rows - 1) * G.rowH + 6}" stroke="#ccc" stroke-width=".3"/>`;
     }
+    if (G.textTop) s += `<line x1="20" y1="${G.textTop - 4}" x2="190" y2="${G.textTop - 4}" stroke="#999" stroke-width=".3"/>`;
     s += `<text x="105" y="292" text-anchor="middle" font-size="2.6" fill="#888">${esc(opts.examId)} · ${esc(opts.studentId)}</text>`;
     return s + '</svg>';
   }
@@ -174,8 +184,9 @@
       if (code) { const k = w / qrImg.width; ['topLeftCorner', 'topRightCorner', 'bottomLeftCorner', 'bottomRightCorner'].forEach(n => { code.location[n] = { x: code.location[n].x * k, y: code.location[n].y * k }; }); }
     }
     if (!code) code = root.jsQR(img.data, w, h, { inversionAttempts: 'dontInvert' });
-    if (!code || !/^B1[:|]/.test(code.data)) return { status: 'noqr' };
+    if (!code || !/^B[12][:|]/.test(code.data)) return { status: 'noqr' };
     const parts = code.data.split(/[:|]/);
+    const G = LAYOUTS[parts[0]] || L;
     const g = toGray(img);
     // تقدير أولي لموضع الورقة من زوايا رمز QR
     const q = L.qr;
@@ -205,11 +216,11 @@
     const qrc = [(loc.topLeftCorner.x + loc.bottomRightCorner.x) / 2, (loc.topLeftCorner.y + loc.bottomRightCorner.y) / 2];
     if (Math.hypot(qcx - qrc[0], qcy - qrc[1]) > 6 * ppm) return { status: 'nomarkers', qr: code.data };
     const scale = Math.hypot(...[0, 1].map(i => apply(H, 106, 150)[i] - apply(H, 105, 150)[i]));
-    const r = Math.max(1.5, L.r * 0.55 * scale);
+    const r = Math.max(1.5, G.r * 0.55 * scale);
     // مستوى البياض: نقاط بين الدوائر
     const whites = [];
-    for (let row = 0; row < L.rows; row += 2) for (let c = 0; c < 3; c++) {
-      const [x, y] = apply(H, L.colRight[c] - L.optStart - 1.5 * L.optGap, L.rowY0 + row * L.rowH + L.rowH / 2);
+    for (let row = 0; row < G.rows; row += 2) for (let c = 0; c < 3; c++) {
+      const [x, y] = apply(H, G.colRight[c] - G.optStart - 1.5 * G.optGap, G.rowY0 + row * G.rowH + G.rowH / 2);
       whites.push(sampleMean(g, w, h, x, y, r));
     }
     whites.sort((a, b) => a - b);
@@ -219,7 +230,7 @@
       const nOpt = Math.min(4, (opts.options && opts.options[i]) || 4);
       const d = [];
       for (let k = 0; k < nOpt; k++) {
-        const [mx, my] = bubbleCenter(i, k);
+        const [mx, my] = bubbleCenter(i, k, G);
         const [x, y] = apply(H, mx, my);
         d.push(Math.max(0, 1 - sampleMean(g, w, h, x, y, r) / white));
       }
@@ -236,5 +247,5 @@
     const v = code.version || 1; return 17 + 4 * v;
   }
 
-  root.OMR = { layout: L, MAXQ, sheetSVG, decode, bubbleCenter, homography, apply, _findSquares: findSquares, _toGray: toGray };
+  root.OMR = { layout: L, LAYOUTS, maxFor, MAXQ, sheetSVG, decode, bubbleCenter, homography, apply, _findSquares: findSquares, _toGray: toGray };
 })(typeof self !== 'undefined' ? self : this);

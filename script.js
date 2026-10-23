@@ -124,7 +124,7 @@ async function callApi(action, payload = {}) {
         }
         if (!result.success) {
           console.error("API Error Response:", result.message, result.stack);
-          if (!['getWeeklySchedule', 'getExistingEvaluations', 'getUniqueClassesAndSubjects', 'getUserDetails', 'getSmartTimetableVersions', 'trackItemView', 'getNotifications', 'markNotificationsRead', 'registerPushToken', 'unregisterPushToken', 'logout', 'getMyFeatures'].includes(action)) { 
+          if (!['getWeeklySchedule', 'getExistingEvaluations', 'getUniqueClassesAndSubjects', 'getUserDetails', 'getSmartTimetableVersions', 'trackItemView', 'getNotifications', 'markNotificationsRead', 'registerPushToken', 'unregisterPushToken', 'logout', 'getMyFeatures', 'getMyGmail', 'sendGmailCode', 'verifyGmailCode', 'forgotPassword', 'resetPassword'].includes(action)) { 
             alert(`خطأ من الخادم: ${result.message || 'حدث خطأ غير متوقع.'}`);
           }
         }
