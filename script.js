@@ -2,7 +2,7 @@
 //                     الإعدادات الرئيسية
 // ==========================================================
 // !!! تنبيه هام: هذا هو رابط النشر الجديد الذي زودتني به
-const API_URL = 'https://script.google.com/macros/s/AKfycbzE2kESTg6sl2GepgPNphWmCAg0ROe0nQOuP5bl-QVl-opZIE8qjUVKLbPLyB1iGrPt/exec'; 
+const API_URL = 'https://script.google.com/macros/s/AKfycbx8e3skSYdJmifQXAwvZLCTI2SVyEo7XG9mdL3ij0u5-vP9L9nWHTeybkPNL6pPmhFF/exec'; 
 
 // ==========================================================
 //                   دوال الأمان (جديد)
