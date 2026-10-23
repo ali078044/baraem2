@@ -22,7 +22,7 @@
         button:hover { background-color: #0056b3; }
         #message { margin-top: 1rem; font-weight: bold; min-height: 1.2em; }
     </style>
-    <link rel="stylesheet" href="style.css?v=1">
+    <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
     <div class="form-container">
@@ -30,17 +30,26 @@
         <form id="loginForm">
             <div class="input-group">
                 <i class="fas fa-envelope"></i>
-                <input type="email" id="email" placeholder="البريد الإلكتروني" required>
+                <input type="email" id="email" placeholder="البريد الإلكتروني" required autocomplete="username" dir="ltr">
             </div>
             <div class="input-group">
                 <i class="fas fa-lock"></i>
-                <input type="password" id="password" placeholder="كلمة المرور" required>
+                <input type="password" id="password" placeholder="كلمة المرور" required autocomplete="current-password" dir="ltr">
             </div>
             <button type="submit">تسجيل الدخول</button>
-            <p id="message"></p>
+            <p id="message" role="alert" aria-live="assertive"></p>
+            <div class="login-help">
+                <b>تعليمات الدخول</b>
+                <ul>
+                    <li>اكتب البريد الإلكتروني كما سلّمته لك المدرسة، بدون مسافات.</li>
+                    <li>كلمة المرور تفرّق بين الأحرف الكبيرة والصغيرة، وتأكد من لغة لوحة المفاتيح.</li>
+                    <li>بعد 8 محاولات خاطئة يتوقف الدخول 15 دقيقة لحماية حسابك.</li>
+                    <li>نسيت كلمة المرور؟ اطلب من إدارة المدرسة تعيين كلمة جديدة.</li>
+                </ul>
+            </div>
         </form>
     </div>
-    <script src="ui.js?v=1"></script>
+    <script src="ui.js?v=3"></script>
     <script src="script.js"></script>
 </body>
 </html>

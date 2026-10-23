@@ -23,6 +23,32 @@
   window.toast = toast;
   window.alert = function (msg) { toast(msg, /^(خطأ|فشل|الرجاء|يرجى|لا |لم )/.test(String(msg))); };
 
+  /* شريط «جارِ التحميل» أعلى الشاشة مع كل طلب للخادم، حتى لا يبقى المستخدم محتاراً */
+  var pending = 0, loadTimer;
+  function loadingUI(on) {
+    var bar = document.getElementById('appLoading');
+    if (!bar && document.body) {
+      bar = document.createElement('div');
+      bar.id = 'appLoading';
+      bar.innerHTML = '<i></i><span>جارِ التحميل…</span>';
+      document.body.appendChild(bar);
+    }
+    if (!bar) return;
+    clearTimeout(loadTimer);
+    if (on) loadTimer = setTimeout(function () { bar.classList.add('on'); }, 150);
+    else bar.classList.remove('on');
+  }
+  var realFetch = window.fetch;
+  window.fetch = function (url) {
+    var isApi = /script\.google(usercontent)?\.com/.test(String(url && url.url || url));
+    if (!isApi) return realFetch.apply(this, arguments);
+    var body = arguments[1] && arguments[1].body;
+    var quiet = /"action":"(getNotifications|trackItemView|markNotificationsRead|registerPushToken)"/.test(String(body || ''));
+    if (!quiet) { pending++; loadingUI(true); }
+    var done = function () { if (!quiet && --pending <= 0) { pending = 0; loadingUI(false); } };
+    return realFetch.apply(this, arguments).then(function (r) { done(); return r; }, function (e) { done(); throw e; });
+  };
+
   function onReady(fn) { if (document.readyState !== 'loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
 
   onReady(function () {
@@ -34,7 +60,8 @@
     }, true);
 
     if (document.getElementById('loginForm')) return buildLogin();
-    if (document.querySelector('.tabs')) buildShell();
+    if (document.querySelector('.tabs')) { buildShell(); deepLink(); }
+    addSelectAll();
   });
 
   function buildLogin() {
@@ -45,6 +72,13 @@
     brand.className = 'login-brand';
     brand.innerHTML = '<span class="app-mark">' + MARK + '</span><span><b>' + SCHOOL_NAME + '</b><small>تسجيل الدخول للطلاب والمدرسين والإدارة</small></span>';
     box.insertBefore(brand, box.firstChild);
+    var pw = document.getElementById('password');
+    if (pw && pw.parentNode) {
+      var eye = document.createElement('button');
+      eye.type = 'button'; eye.className = 'pw-eye'; eye.textContent = 'إظهار'; eye.setAttribute('aria-label', 'إظهار كلمة المرور');
+      eye.onclick = function () { var show = pw.type === 'password'; pw.type = show ? 'text' : 'password'; eye.textContent = show ? 'إخفاء' : 'إظهار'; };
+      pw.parentNode.appendChild(eye);
+    }
   }
 
   function buildShell() {
@@ -107,6 +141,54 @@
       if (e.target.closest('.tab-button')) { body.classList.remove('nav-open'); window.scrollTo(0, 0); }
     });
     syncTitle();
+  }
+
+  /* فتح التبويب المطلوب من رابط الإشعار (مثال: StudentInterface.html#gradesTab) */
+  function deepLink() {
+    var orig = window.showTab;
+    if (typeof orig !== 'function') return;
+    var want = decodeURIComponent((location.hash || '').slice(1));
+    var pending = want && document.getElementById(want) ? want : '';
+    window.showTab = function (id) {
+      // التحميل الأولي في script.js يفتح التبويب الافتراضي؛ نستبدله بالتبويب المطلوب من الرابط فقط
+      if (pending && ['gradesTab', 'announcementsTab', 'pendingTab'].indexOf(id) > -1) id = pending;
+      var r = orig(id);
+      try { history.replaceState(null, '', '#' + id); } catch (e) {}
+      return r;
+    };
+    var tabs = document.querySelector('.tabs');
+    if (tabs) tabs.addEventListener('click', function () { pending = ''; }, true);
+    setTimeout(function () { pending = ''; }, 8000);
+    if (pending) orig(pending);
+    window.addEventListener('hashchange', function () {
+      var h = decodeURIComponent(location.hash.slice(1));
+      if (h && document.getElementById(h)) { pending = ''; orig(h); }
+    });
+  }
+
+  /* أزرار «تحديد الكل / إلغاء الكل» للإكسل الشامل */
+  function addSelectAll() {
+    ['masterSubjectsContainer', 'masterGradeTypesContainer'].forEach(function (id) {
+      var box = document.getElementById(id);
+      if (!box || box.previousElementSibling && box.previousElementSibling.classList.contains('select-bar')) return;
+      var bar = document.createElement('div');
+      bar.className = 'select-bar';
+      bar.innerHTML = '<button type="button" data-v="1">تحديد الكل</button><button type="button" data-v="0">إلغاء الكل</button><span></span>';
+      var count = bar.querySelector('span');
+      var upd = function () {
+        var all = box.querySelectorAll('input[type=checkbox]'), on = box.querySelectorAll('input[type=checkbox]:checked');
+        count.textContent = all.length ? on.length + ' من ' + all.length + ' محدد' : '';
+      };
+      bar.addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        box.querySelectorAll('input[type=checkbox]').forEach(function (c) { c.checked = b.dataset.v === '1'; c.dispatchEvent(new Event('change', { bubbles: true })); });
+        upd();
+      });
+      box.addEventListener('change', upd);
+      new MutationObserver(upd).observe(box, { childList: true, subtree: true });
+      box.parentNode.insertBefore(bar, box);
+      upd();
+    });
   }
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
